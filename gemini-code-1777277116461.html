@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>은랑 Lv.999 부옵 효율 계산기</title>
+    <style>
+        :root {
+            --neon-purple: #bc00ff;
+            --neon-blue: #00d4ff;
+            --bg-dark: #0a0a0c;
+            --card-bg: #16161d;
+            --text-main: #e0e0e0;
+            --gain-color: #00ff88;
+        }
+
+        body { background-color: var(--bg-dark); color: var(--text-main); font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; padding: 20px; }
+        .container { max-width: 800px; width: 100%; background: var(--card-bg); padding: 30px; border-radius: 15px; border: 1px solid var(--neon-purple); box-shadow: 0 0 20px rgba(188, 0, 255, 0.2); }
+        h1 { text-align: center; color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); margin-bottom: 25px; }
+        .section { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        label { display: block; font-size: 0.85rem; margin-bottom: 5px; color: #aaa; }
+        input[type="number"] { width: 100%; padding: 10px; background: #252530; border: 1px solid #444; color: #fff; border-radius: 5px; box-sizing: border-box; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; cursor: pointer; font-size: 0.9rem; }
+        button { width: 100%; padding: 15px; background: linear-gradient(45deg, var(--neon-purple), var(--neon-blue)); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 8px; margin-top: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #333; }
+        th { background: rgba(0, 212, 255, 0.1); color: var(--neon-blue); }
+        .highlight { color: #ff007b; font-weight: bold; text-shadow: 0 0 5px rgba(255, 0, 123, 0.5); }
+        .gain { color: var(--gain-color); font-size: 0.8rem; display: block; }
+        .comparison-info { background: #20202b; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 0.85rem; color: #bbb; border-left: 3px solid var(--neon-blue); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>SILVER WOLF LV.999 ANALYZER</h1>
+    
+    <div class="section">
+        <label>마을 스탯 (은랑)</label>
+        <div class="grid">
+            <input type="number" id="sw_spd" placeholder="속도" step="0.1">
+            <input type="number" id="sw_cr" placeholder="치확 %" step="0.1">
+            <input type="number" id="sw_cd" placeholder="치피 %" step="0.1">
+        </div>
+    </div>
+
+    <div class="section">
+        <label>효광 속도</label>
+        <input type="number" id="hyo_spd" placeholder="효광의 속도를 입력하세요" step="0.1">
+    </div>
+
+    <div class="section">
+        <label>보유 전광 및 돌파 설정</label>
+        <div class="grid">
+            <label class="checkbox-group"><input type="checkbox" id="s_lc"> 스파키 전광 (환락+20%)</label>
+            <label class="checkbox-group"><input type="checkbox" id="h_lc"> 효광 전광 (치확+10, 치피+30)</label>
+            <label class="checkbox-group"><input type="checkbox" id="hh_e1"> 곽향 1돌 (환락+26%)</label>
+            <label class="checkbox-group"><input type="checkbox" id="hy_e2"> 히아킨 2돌 (환락+66%)</label>
+        </div>
+    </div>
+
+    <button onclick="calculate()">데이터 시뮬레이션 시작</button>
+
+    <div id="resultArea" style="display:none;">
+        <div class="comparison-info">
+            💡 <strong>부옵 효율 분석:</strong> 현재 상태에서 해당 부옵 1개가 추가되었을 때의 <strong>딜 상승률(%)</strong>입니다.
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Score</th>
+                    <th>최종 배율</th>
+                    <th>속도 +2.28 시</th>
+                    <th>치피 +5.8% 시</th>
+                </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function getMultiplier(spd, cr, cd, hSpd, s_lc, h_lc, hh_e1, hy_e2, hs) {
+        // 내부 연산: 기본 환락도 78% 적용
+        let joy = 78 + (s_lc ? 20 : 0) + (hh_e1 ? 26 : 0) + (hy_e2 ? 66 : 0);
+        
+        // 장비 및 속도 보정
+        joy += ((hSpd - 120) + 30) / 5;
+        joy += (spd - 160) * 2;
+
+        // 치명타 설정 (마을 치피 + 내부 보너스 95% 합산)
+        let fCr = cr + (h_lc ? 10 : 0) + (hs * 0.4);
+        let fCd = cd + 95 + (h_lc ? 30 : 0);
+
+        // 치확 100% 초과 시 치피 전환 (1%당 2%)
+        if (fCr > 100) {
+            let excess = fCr - 100;
+            fCr = 100;
+            fCd += excess * 2;
+        }
+
+        return (1 + joy / 100) * (fCd / 100);
+    }
+
+    function calculate() {
+        const spd = parseFloat(document.getElementById('sw_spd').value) || 0;
+        const cr = parseFloat(document.getElementById('sw_cr').value) || 0;
+        const cd = parseFloat(document.getElementById('sw_cd').value) || 0;
+        const hSpd = parseFloat(document.getElementById('hyo_spd').value) || 0;
+        const s_lc = document.getElementById('s_lc').checked;
+        const h_lc = document.getElementById('h_lc').checked;
+        const hh_e1 = document.getElementById('hh_e1').checked;
+        const hy_e2 = document.getElementById('hy_e2').checked;
+
+        if(spd === 0 && cr === 0 && cd === 0) {
+            alert("스펙을 입력해주세요!");
+            return;
+        }
+
+        const hs_list = [60, 120, 240, 300];
+        const tbody = document.getElementById('resultBody');
+        tbody.innerHTML = '';
+
+        hs_list.forEach(hs => {
+            const base = getMultiplier(spd, cr, cd, hSpd, s_lc, h_lc, hh_e1, hy_e2, hs);
+            const upSpd = getMultiplier(spd + 2.28, cr, cd, hSpd, s_lc, h_lc, hh_e1, hy_e2, hs);
+            const upCd = getMultiplier(spd, cr, cd + 5.8, hSpd, s_lc, h_lc, hh_e1, hy_e2, hs);
+
+            const spdGain = ((upSpd / base - 1) * 100).toFixed(2);
+            const cdGain = ((upCd / base - 1) * 100).toFixed(2);
+
+            const spdStyle = parseFloat(spdGain) > parseFloat(cdGain) ? 'highlight' : '';
+            const cdStyle = parseFloat(cdGain) > parseFloat(spdGain) ? 'highlight' : '';
+
+            const row = `<tr>
+                <td>${hs}점</td>
+                <td>${base.toFixed(3)}x</td>
+                <td><span class="${spdStyle}">${upSpd.toFixed(3)}x</span><span class="gain">(+${spdGain}%)</span></td>
+                <td><span class="${cdStyle}">${upCd.toFixed(3)}x</span><span class="gain">(+${cdGain}%)</span></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+
+        document.getElementById('resultArea').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
